@@ -10,7 +10,7 @@ import time
 import uuid
 from pathlib import Path
 from typing import Any
-
+from dotenv import load_dotenv
 
 from openai import OpenAI
 from qdrant_client import QdrantClient
@@ -26,6 +26,8 @@ EMBEDDING_DIM     = 1536
 CHAT_MODEL        = "gpt-4o-mini"
 TARGET_CHUNK_SIZE = 500   # characters
 CHUNK_OVERLAP     = 80    # characters
+
+load_dotenv()
 
 openai = OpenAI()
 qdrant = QdrantClient(
@@ -71,33 +73,39 @@ def load_corpus(corpus_dir: Path) -> list[dict[str, Any]]:
 def chunk_document(doc: dict[str, Any]) -> list[dict[str, Any]]:
     
     chunks = []
-    text = doc["text"]
+    text = doc["text"].strip()
 
     if not text:
         return chunks
     
     start = 0
     section_num = 1
-    text_length = len(text)
+    
+    while start < len(text):
+        end = min(start + TARGET_CHUNK_SIZE, len(text))
+        if end < len(text):
+            boundary=text.rfind(" ", start, end)
+            if boundary > start:
+                end = boundary
+        chunk_text = text[start:end].strip()
 
-    while start < text_length:
-        end = min(start + TARGET_CHUNK_SIZE, text_length)
-        chunk_text = text[start:end]
+        if chunk_text:
+            chunks.append(
+                {
+                    "source": doc["source"],
+                    "title": doc["title"],
+                    "section": f"Chunk {section_num}",
+                    "text": chunk_text
+                }
+            )
+            section_num += 1
 
-        chunks.append(
-            {
-                "source": doc["source"],
-                "title": doc["title"],
-                "section": f"Chunk {section_num}",
-                "text": chunk_text
-            }
-        )
+            next_start = end - CHUNK_OVERLAP
+            
+            if next_start <= start:
+                next_start = end
+            start = next_start
 
-        section_num += 1        
-        if end == text_length:
-            break
-
-        start += TARGET_CHUNK_SIZE - CHUNK_OVERLAP
     return chunks
 
 
