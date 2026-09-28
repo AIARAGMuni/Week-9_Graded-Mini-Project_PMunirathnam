@@ -79,4 +79,4 @@ produced noticeably better answers than a simple question-answering prompt. The 
 ![alt text](image-2.png)
 
 ## 3. Validate
-![alt text](image-3.png)
+![alt text](image.png)
